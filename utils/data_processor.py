@@ -14,8 +14,7 @@ class DataProcessor:
     def __init__(self):
         self.logger = logging.getLogger(self.__class__.__name__)
 
-    @staticmethod
-    def clean_text(text: str) -> str:
+    def clean_text(self, text: str) -> str:
         """清理文本"""
         if not text:
             return ""
@@ -34,8 +33,7 @@ class DataProcessor:
 
         return text
 
-    @staticmethod
-    def extract_numbers(text: str) -> List[float]:
+    def extract_numbers(self, text: str) -> List[float]:
         """从文本中提取数字"""
         if not text:
             return []
@@ -57,8 +55,7 @@ class DataProcessor:
 
         return numbers
 
-    @staticmethod
-    def extract_yield_predictions(analyses: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    def extract_yield_predictions(self, analyses: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
         """提取并聚合收益率预测（TODO 3.1）"""
         predictions = {
             '10Y': {'上行': [], '下行': [], '震荡': [], '未涉及': []},
@@ -110,9 +107,12 @@ class DataProcessor:
 
         return summary
 
-    @staticmethod
-    def _classify_direction(direction: str) -> str:
+    def _classify_direction(self, direction: str) -> str:
         """分类预测方向"""
+        if not direction:
+            return '未涉及'
+            
+        direction = str(direction)
         if '上' in direction or '升' in direction:
             return '上行'
         elif '下' in direction or '降' in direction:
@@ -122,8 +122,7 @@ class DataProcessor:
         else:
             return '未涉及'
 
-    @staticmethod
-    def calculate_article_score(analysis: Dict[str, Any], read_count: int = 0) -> Dict[str, Any]:
+    def calculate_article_score(self, analysis: Dict[str, Any], read_count: int = 0) -> Dict[str, Any]:
         """计算文章评分（TODO 3.2 & 3.3）"""
         scores = {}
 
@@ -132,7 +131,7 @@ class DataProcessor:
         for dim in ['基本面及通胀', '资金面', '货币及财政政策']:
             content = analysis.get(dim, '')
             # 统计数字和百分比
-            numbers = DataProcessor.extract_numbers(content)
+            numbers = self.extract_numbers(str(content))
             data_count += len(numbers)
 
         scores['数据支撑'] = min(10, data_count * 0.5)
@@ -146,7 +145,7 @@ class DataProcessor:
         scores['逻辑完整'] = complete_dims * 2
 
         # 3. 策略可操作性（25%）
-        strategy = analysis.get('投资策略', '')
+        strategy = str(analysis.get('投资策略', ''))
         if '具体' in strategy or '建议' in strategy:
             if any(keyword in strategy for keyword in ['买入', '卖出', '增持', '减持', '配置']):
                 scores['策略价值'] = 8
@@ -157,9 +156,10 @@ class DataProcessor:
 
         # 4. 观点独特性（15%）
         unique_score = 6  # 基础分
-        if '首次' in str(analysis) or '独家' in str(analysis):
+        analysis_str = str(analysis)
+        if '首次' in analysis_str or '独家' in analysis_str:
             unique_score = 8
-        elif '市场一致' in str(analysis) or '共识' in str(analysis):
+        elif '市场一致' in analysis_str or '共识' in analysis_str:
             unique_score = 4
         scores['观点独特'] = unique_score
 
@@ -193,8 +193,7 @@ class DataProcessor:
             '评分理由': f"数据支撑{scores['数据支撑']}分，逻辑完整性{scores['逻辑完整']}分，策略价值{scores['策略价值']}分，观点独特性{scores['观点独特']}分，市场影响力{scores['市场影响']}分"
         }
 
-    @staticmethod
-    def extract_key_opinions(analyses: List[Dict[str, Any]], top_n: int = 5) -> Dict[str, List[str]]:
+    def extract_key_opinions(self, analyses: List[Dict[str, Any]], top_n: int = 5) -> Dict[str, List[str]]:
         """提取主要观点（TODO 3.4）"""
         key_opinions = {
             '利率走势': [],
@@ -212,27 +211,26 @@ class DataProcessor:
             # 提取利率走势观点
             rate_opinion = analysis.get('整体观点', '')
             if rate_opinion:
-                key_opinions['利率走势'].append(f"{institution}: {rate_opinion[:100]}...")
+                key_opinions['利率走势'].append(f"{institution}: {str(rate_opinion)[:100]}...")
 
             # 提取政策预期
             policy = analysis.get('货币及财政政策', '')
-            if policy and len(policy) > 30:
-                key_opinions['政策预期'].append(f"{institution}: {policy[:100]}...")
+            if policy and len(str(policy)) > 30:
+                key_opinions['政策预期'].append(f"{institution}: {str(policy)[:100]}...")
 
             # 提取市场情绪
             sentiment = analysis.get('机构行为', '')
-            if sentiment and len(sentiment) > 30:
-                key_opinions['市场情绪'].append(f"{institution}: {sentiment[:100]}...")
+            if sentiment and len(str(sentiment)) > 30:
+                key_opinions['市场情绪'].append(f"{institution}: {str(sentiment)[:100]}...")
 
             # 提取投资建议
             strategy = analysis.get('投资策略', '')
             if strategy:
-                key_opinions['投资建议'].append(f"{institution}: {strategy[:100]}...")
+                key_opinions['投资建议'].append(f"{institution}: {str(strategy)[:100]}...")
 
         return key_opinions
 
-    @staticmethod
-    def generate_opinion_cloud(analyses: List[Dict[str, Any]]) -> Dict[str, int]:
+    def generate_opinion_cloud(self, analyses: List[Dict[str, Any]]) -> Dict[str, int]:
         """生成观点词云数据"""
         all_text = ""
 
@@ -254,8 +252,7 @@ class DataProcessor:
         # 返回前50个高频词
         return dict(word_freq.most_common(50))
 
-    @staticmethod
-    def parse_date(date_str: str) -> str:
+    def parse_date(self, date_str: str) -> str:
         """解析并标准化日期"""
         if not date_str or pd.isna(date_str):
             return ""
@@ -282,8 +279,7 @@ class DataProcessor:
 
         return date_str
 
-    @staticmethod
-    def merge_analyses(analyses: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def merge_analyses(self, analyses: List[Dict[str, Any]]) -> Dict[str, Any]:
         """合并多个分析结果，生成增强的统计信息"""
         if not analyses:
             return {
@@ -299,30 +295,29 @@ class DataProcessor:
         # 基础统计
         institutions = list(set(a.get('机构', '') for a in analyses if a.get('机构')))
         dates = [a.get('日期', '') for a in analyses if a.get('日期')]
-        date_range = DataProcessor.parse_date_range(dates)
+        date_range = self.parse_date_range(dates)
 
         # 增强统计
         return {
             'total_count': len(analyses),
             'institutions': institutions,
             'date_range': date_range,
-            'average_score': DataProcessor._calculate_average_score(analyses),
-            'dimension_statistics': DataProcessor._calculate_dimension_stats(analyses),
-            'article_type_statistics': DataProcessor._calculate_article_type_stats(analyses),
-            'yield_predictions': DataProcessor.extract_yield_predictions(analyses),
-            'key_opinions': DataProcessor.extract_key_opinions(analyses),
-            'opinion_cloud': DataProcessor.generate_opinion_cloud(analyses)
+            'average_score': self._calculate_average_score(analyses),
+            'dimension_statistics': self._calculate_dimension_stats(analyses),
+            'article_type_statistics': self._calculate_article_type_stats(analyses),
+            'yield_predictions': self.extract_yield_predictions(analyses),
+            'key_opinions': self.extract_key_opinions(analyses),
+            'opinion_cloud': self.generate_opinion_cloud(analyses)
         }
 
-    @staticmethod
-    def parse_date_range(dates: List[str]) -> str:
+    def parse_date_range(self, dates: List[str]) -> str:
         """解析日期范围"""
         if not dates:
             return "未知"
 
         valid_dates = []
         for date in dates:
-            parsed = DataProcessor.parse_date(date)
+            parsed = self.parse_date(date)
             if parsed and parsed != date:
                 valid_dates.append(parsed)
 
@@ -336,8 +331,7 @@ class DataProcessor:
         else:
             return f"{valid_dates[0]} 至 {valid_dates[-1]}"
 
-    @staticmethod
-    def _calculate_average_score(analyses: List[Dict[str, Any]]) -> float:
+    def _calculate_average_score(self, analyses: List[Dict[str, Any]]) -> float:
         """计算平均评分"""
         scores = [
             a.get('重要性评分', 0) for a in analyses
@@ -349,8 +343,7 @@ class DataProcessor:
 
         return round(sum(scores) / len(scores), 2)
 
-    @staticmethod
-    def _calculate_dimension_stats(analyses: List[Dict[str, Any]]) -> Dict[str, int]:
+    def _calculate_dimension_stats(self, analyses: List[Dict[str, Any]]) -> Dict[str, int]:
         """统计各维度出现次数"""
         dimensions = [
             '基本面及通胀',
@@ -370,8 +363,7 @@ class DataProcessor:
 
         return stats
 
-    @staticmethod
-    def _calculate_article_type_stats(analyses: List[Dict[str, Any]]) -> Dict[str, int]:
+    def _calculate_article_type_stats(self, analyses: List[Dict[str, Any]]) -> Dict[str, int]:
         """统计文章类型分布"""
         type_stats = {}
 
@@ -382,3 +374,40 @@ class DataProcessor:
                     type_stats[type_name] = type_stats.get(type_name, 0) + 1
 
         return type_stats
+
+    def validate_analysis_result(self, analysis: Dict[str, Any]) -> bool:
+        """验证分析结果的完整性"""
+        # 必需字段
+        required_fields = [
+            '机构', '日期', 'url', 
+            '基本面及通胀', '资金面', 
+            '货币及财政政策', '机构行为', 
+            '海外及其他', '整体观点', 
+            '投资策略', '重要性评分'
+        ]
+        
+        # 检查必需字段
+        for field in required_fields:
+            if field not in analysis:
+                self.logger.warning(f"分析结果缺少必需字段: {field}")
+                return False
+        
+        # 检查评分是否合理
+        score = analysis.get('重要性评分', 0)
+        try:
+            score = float(score)
+            if score < 1 or score > 10:
+                self.logger.warning(f"评分超出范围: {score}")
+                return False
+        except (TypeError, ValueError):
+            self.logger.warning(f"评分格式错误: {score}")
+            return False
+        
+        # 检查收益率预测格式
+        for key in ['10Y国债收益率预测', '5Y国债收益率预测']:
+            forecast = analysis.get(key, {})
+            if not isinstance(forecast, dict):
+                self.logger.warning(f"{key}格式错误，应为字典")
+                return False
+        
+        return True
