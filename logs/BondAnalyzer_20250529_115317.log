@@ -1,0 +1,61 @@
+2025-05-29 11:53:17,655 - BondAnalyzer - INFO - 初始化债券市场分析系统
+2025-05-29 11:53:18,182 - BondAnalyzer - INFO - ================================================================================
+2025-05-29 11:53:18,182 - BondAnalyzer - INFO - 债券市场观点自动化分析系统 - 开始运行
+2025-05-29 11:53:18,182 - BondAnalyzer - INFO - 开始时间: 2025-05-29 11:53:18
+2025-05-29 11:53:18,182 - BondAnalyzer - INFO - ================================================================================
+2025-05-29 11:53:18,203 - BondAnalyzer - INFO - 
+[1/13] 分析 华西固收 的文章
+2025-05-29 11:53:18,204 - BondAnalyzer - INFO - 使用缓存内容
+2025-05-29 11:53:47,633 - BondAnalyzer - INFO - 分析完成 - 评分: 7
+2025-05-29 11:53:50,634 - BondAnalyzer - INFO - 
+[2/13] 分析 华西固收 的文章
+2025-05-29 11:53:50,645 - BondAnalyzer - INFO - 使用缓存内容
+2025-05-29 11:54:31,049 - BondAnalyzer - INFO - 分析完成 - 评分: 7
+2025-05-29 11:54:34,050 - BondAnalyzer - INFO - 
+[3/13] 分析 申万固收 的文章
+2025-05-29 11:54:34,061 - BondAnalyzer - INFO - 使用缓存内容
+2025-05-29 11:55:14,753 - BondAnalyzer - INFO - 分析完成 - 评分: 7
+2025-05-29 11:55:17,754 - BondAnalyzer - INFO - 
+[4/13] 分析 金鹰基金 的文章
+2025-05-29 11:55:17,765 - BondAnalyzer - INFO - 使用缓存内容
+2025-05-29 11:55:51,871 - BondAnalyzer - INFO - 分析完成 - 评分: 7
+2025-05-29 11:55:54,872 - BondAnalyzer - INFO - 
+[5/13] 分析 华创固收 的文章
+2025-05-29 11:55:54,883 - BondAnalyzer - INFO - 使用缓存内容
+2025-05-29 11:56:31,043 - BondAnalyzer - INFO - 分析完成 - 评分: 7
+2025-05-29 11:56:34,044 - BondAnalyzer - INFO - 
+[6/13] 分析 浙商固收 的文章
+2025-05-29 11:56:34,055 - BondAnalyzer - INFO - 使用缓存内容
+2025-05-29 11:57:14,716 - BondAnalyzer - INFO - 分析完成 - 评分: 7
+2025-05-29 11:57:17,717 - BondAnalyzer - INFO - 
+[7/13] 分析 华创投顾部 的文章
+2025-05-29 11:57:17,728 - BondAnalyzer - INFO - 使用缓存内容
+2025-05-29 11:57:47,676 - BondAnalyzer - INFO - 分析完成 - 评分: 7
+2025-05-29 11:57:50,678 - BondAnalyzer - INFO - 
+[8/13] 分析 华西固收 的文章
+2025-05-29 11:57:50,688 - BondAnalyzer - INFO - 使用缓存内容
+2025-05-29 11:58:29,689 - BondAnalyzer - INFO - 分析完成 - 评分: 7
+2025-05-29 11:58:32,689 - BondAnalyzer - INFO - 
+[9/13] 分析 国泰海通固收 的文章
+2025-05-29 11:58:32,691 - BondAnalyzer - INFO - 使用缓存内容
+2025-05-29 11:59:13,117 - BondAnalyzer - INFO - 分析完成 - 评分: 7
+2025-05-29 11:59:16,118 - BondAnalyzer - INFO - 
+[10/13] 分析 华福固收 的文章
+2025-05-29 11:59:16,128 - BondAnalyzer - INFO - 使用缓存内容
+2025-05-29 11:59:57,276 - BondAnalyzer - INFO - 分析完成 - 评分: 7
+2025-05-29 12:00:00,277 - BondAnalyzer - INFO - 
+[11/13] 分析 国盛固收 的文章
+2025-05-29 12:00:00,287 - BondAnalyzer - INFO - 使用缓存内容
+2025-05-29 12:00:34,154 - BondAnalyzer - INFO - 分析完成 - 评分: 7
+2025-05-29 12:00:37,154 - BondAnalyzer - INFO - 
+[12/13] 分析 开源固收 的文章
+2025-05-29 12:00:37,166 - BondAnalyzer - INFO - 使用缓存内容
+2025-05-29 12:01:06,936 - BondAnalyzer - INFO - 分析完成 - 评分: 7
+2025-05-29 12:01:09,937 - BondAnalyzer - INFO - 
+[13/13] 分析 华福固收 的文章
+2025-05-29 12:01:09,937 - BondAnalyzer - INFO - 使用缓存内容
+2025-05-29 12:01:43,970 - BondAnalyzer - INFO - 分析完成 - 评分: 7
+2025-05-29 12:01:47,152 - BondAnalyzer - INFO - Excel报告已生成: F:\Xavier BF\1.Xavier 电脑备份\资料备份\Coding\pythonProject\Fixed Income\fixed-income-yj\机构利率债市场观点策略建模\data\output\债券市场分析结果_20250529_120146.xlsx
+2025-05-29 12:02:31,868 - BondAnalyzer - INFO - 文本报告已生成: F:\Xavier BF\1.Xavier 电脑备份\资料备份\Coding\pythonProject\Fixed Income\fixed-income-yj\机构利率债市场观点策略建模\data\output\债券市场观点报告_20250529_120146.txt
+2025-05-29 12:02:31,868 - BondAnalyzer - INFO - 
+分析完成！总耗时: 553.69 秒
