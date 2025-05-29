@@ -7,5 +7,3 @@
 📊 多维度评估：从基本面、资金面、政策面等多个维度分析市场
 📈 收益率预测：综合各机构观点生成收益率预测
 📝 报告生成：自动生成Excel和文本格式的分析报告
-项目结构
-bond-market-analyzer/ ├── config/ │ ├── init.py ✓ │ └── settings.py ✓ ├── crawler/ │ ├── init.py ✓ │ ├── base_crawler.py ✓ │ ├── wechat_crawler.py ✓ │ └── jina_crawler.py ✓ ├── analyzer/ │ ├── init.py ✓ │ ├── article_analyzer.py ✓ │ ├── market_analyzer.py ✓ │ └── prompts.py ✓ ├── api/ │ ├── init.py │ └── deepseek_client.py ✓ ├── report/ │ ├── init.py ✓ │ ├── excel_generator.py ✓ │ └── text_generator.py ✓ ├── utils/ │ ├── init.py │ ├── file_handler.py ✓ │ ├── logger.py ✓ │ └── data_processor.py
