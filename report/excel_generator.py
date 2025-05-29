@@ -1,4 +1,3 @@
-"""Excel报告生成器"""
 import os
 import pandas as pd
 from datetime import datetime
@@ -14,6 +13,61 @@ class ExcelGenerator:
     def __init__(self):
         self.output_dir = OUTPUT_DIR
 
+    def create_summary_dataframe(self, analyses: List[Dict[str, Any]]) -> pd.DataFrame:
+        """创建分析汇总DataFrame（供Main.py调用）"""
+        table_data = []
+        
+        for i, analysis in enumerate(analyses, 1):
+            forecast_10y = analysis.get('10Y国债收益率预测', {})
+            forecast_5y = analysis.get('5Y国债收益率预测', {})
+            score_details = analysis.get('评分细项', {})
+            
+            if not isinstance(forecast_10y, dict):
+                forecast_10y = {}
+            if not isinstance(forecast_5y, dict):
+                forecast_5y = {}
+            if not isinstance(score_details, dict):
+                score_details = {}
+            
+            row = {
+                '序号': i,
+                '机构': analysis.get('机构', ''),
+                '发布日期': analysis.get('日期', ''),
+                '文章链接': analysis.get('url', ''),
+                '文章类型': ', '.join(analysis.get('文章类型', [])) if isinstance(analysis.get('文章类型'), list) else '',
+                '基本面及通胀': str(analysis.get('基本面及通胀', ''))[:500],
+                '资金面': str(analysis.get('资金面', ''))[:500],
+                '货币及财政政策': str(analysis.get('货币及财政政策', ''))[:500],
+                '机构行为': str(analysis.get('机构行为', ''))[:500],
+                '海外及其他': str(analysis.get('海外及其他', ''))[:500],
+                '整体观点': str(analysis.get('整体观点', ''))[:500],
+                '投资策略': str(analysis.get('投资策略', ''))[:500],
+                '10Y收益率预测方向': forecast_10y.get('方向', ''),
+                '10Y收益率预测区间': forecast_10y.get('区间', ''),
+                '10Y预测概率': forecast_10y.get('概率', ''),
+                '5Y收益率预测方向': forecast_5y.get('方向', ''),
+                '5Y收益率预测区间': forecast_5y.get('区间', ''),
+                '5Y预测概率': forecast_5y.get('概率', ''),
+                '重要性评分': analysis.get('重要性评分', 0),
+                '数据支撑分': score_details.get('数据支撑', 0),
+                '逻辑完整分': score_details.get('逻辑完整', 0),
+                '策略价值分': score_details.get('策略价值', 0),
+                '观点独特分': score_details.get('观点独特', 0),
+                '市场影响分': score_details.get('市场影响', 0),
+                '评分理由': str(analysis.get('评分理由', ''))[:200],
+                '阅读量': analysis.get('阅读量', 0)
+            }
+            table_data.append(row)
+        
+        df = pd.DataFrame(table_data)
+        
+        # 按重要性评分排序
+        if not df.empty and '重要性评分' in df.columns:
+            df = df.sort_values('重要性评分', ascending=False).reset_index(drop=True)
+            df['序号'] = range(1, len(df) + 1)  # 重新编号
+        
+        return df
+
     def generate(self, analyses: List[Dict[str, Any]], timestamp: str) -> str:
         """生成Excel报告
 
@@ -25,7 +79,7 @@ class ExcelGenerator:
             str: 生成的Excel文件路径
         """
         # 创建数据框架
-        df = self._create_dataframe(analyses)
+        df = self.create_summary_dataframe(analyses)  # 使用统一的方法
 
         # 生成文件路径
         filename = f'债券市场分析结果_{timestamp}.xlsx'
@@ -48,56 +102,6 @@ class ExcelGenerator:
         self._format_excel(filepath)
 
         return filepath
-
-    def _create_dataframe(self, analyses: List[Dict[str, Any]]) -> pd.DataFrame:
-        """创建主数据框架"""
-        table_data = []
-
-        for i, analysis in enumerate(analyses, 1):
-            forecast_10y = analysis.get('10Y国债收益率预测', {})
-            forecast_5y = analysis.get('5Y国债收益率预测', {})
-            score_details = analysis.get('评分细项', {})
-
-            if not isinstance(forecast_10y, dict):
-                forecast_10y = {}
-            if not isinstance(forecast_5y, dict):
-                forecast_5y = {}
-            if not isinstance(score_details, dict):
-                score_details = {}
-
-            row = {
-                '序号': i,
-                '机构': analysis.get('机构', ''),
-                '发布日期': analysis.get('日期', ''),
-                '文章链接': analysis.get('url', ''),
-                '文章类型': ', '.join(analysis.get('文章类型', [])),
-                '基本面及通胀': analysis.get('基本面及通胀', ''),
-                '资金面': analysis.get('资金面', ''),
-                '货币及财政政策': analysis.get('货币及财政政策', ''),
-                '机构行为': analysis.get('机构行为', ''),
-                '海外及其他': analysis.get('海外及其他', ''),
-                '整体观点': analysis.get('整体观点', ''),
-                '投资策略': analysis.get('投资策略', ''),
-                '10Y收益率预测方向': forecast_10y.get('方向', ''),
-                '10Y收益率预测区间': forecast_10y.get('区间', ''),
-                '10Y预测概率': forecast_10y.get('概率', ''),
-                '5Y收益率预测方向': forecast_5y.get('方向', ''),
-                '5Y收益率预测区间': forecast_5y.get('区间', ''),
-                '5Y预测概率': forecast_5y.get('概率', ''),
-                '重要性评分': analysis.get('重要性评分', 0),
-                '数据支撑分': score_details.get('数据支撑', 0),
-                '逻辑完整分': score_details.get('逻辑完整', 0),
-                '策略价值分': score_details.get('策略价值', 0),
-                '观点独特分': score_details.get('观点独特', 0),
-                '评分理由': analysis.get('评分理由', '')
-            }
-            table_data.append(row)
-
-        df = pd.DataFrame(table_data)
-        # 按重要性评分降序排列
-        df = df.sort_values('重要性评分', ascending=False).reset_index(drop=True)
-
-        return df
 
     def _create_summary_sheet(self, analyses: List[Dict[str, Any]]) -> pd.DataFrame:
         """创建汇总统计表"""
@@ -279,7 +283,7 @@ class ExcelGenerator:
         # 设置行高和列宽
         ws.row_dimensions[1].height = 30
 
-        # 设置列宽
+        # 设置列宽（更新以包含新增的列）
         column_widths = {
             'A': 8,  # 序号
             'B': 15,  # 机构
@@ -304,7 +308,9 @@ class ExcelGenerator:
             'U': 12,  # 逻辑完整分
             'V': 12,  # 策略价值分
             'W': 12,  # 观点独特分
-            'X': 30,  # 评分理由
+            'X': 12,  # 市场影响分
+            'Y': 30,  # 评分理由
+            'Z': 10,  # 阅读量
         }
 
         for col, width in column_widths.items():
@@ -320,7 +326,7 @@ class ExcelGenerator:
                 # 根据评分设置颜色
                 if cell.column == 19:  # 重要性评分列
                     try:
-                        score = int(cell.value)
+                        score = float(cell.value)
                         if score >= 8:
                             cell.fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
                         elif score >= 6:
