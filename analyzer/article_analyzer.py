@@ -1,4 +1,4 @@
-"""文章分析器"""
+"""文章分析器 - 简化版"""
 import json
 import re
 from typing import Dict, Any
@@ -15,7 +15,7 @@ class ArticleAnalyzer:
         self.dimensions = ANALYSIS_DIMENSIONS
 
     def analyze(self, content: str, url: str, institution: str = "", date: str = "") -> Dict[str, Any]:
-        """分析单篇文章"""
+        """分析单篇文章 - 简化版"""
         if len(content) > 10000:
             content = content[:10000] + "..."
 
@@ -46,7 +46,7 @@ class ArticleAnalyzer:
             return self._get_default_analysis(url, institution, date)
 
     def _get_default_analysis(self, url: str, institution: str, date: str) -> Dict[str, Any]:
-        """返回默认分析结果"""
+        """返回默认分析结果 - 简化版"""
         return {
             "url": url,
             "机构": institution,
@@ -56,27 +56,9 @@ class ArticleAnalyzer:
             "货币及财政政策": "",
             "机构行为": "",
             "海外及其他": "",
-            "文章类型": [],
-            "整体观点": "分析失败",
-            "投资策略": "",
-            "10Y国债收益率预测": {
-                "方向": "文章未涉及",
-                "区间": "文章未涉及",
-                "概率": "文章未涉及",
-                "理由": "分析失败"
-            },
-            "5Y国债收益率预测": {
-                "方向": "文章未涉及",
-                "区间": "文章未涉及",
-                "概率": "文章未涉及",
-                "理由": "分析失败"
-            },
-            "重要性评分": 5,
-            "评分细项": {
-                "数据支撑": 5,
-                "逻辑完整": 5,
-                "策略价值": 5,
-                "观点独特": 5
-            },
-            "评分理由": "分析失败，给予默认评分"
+            "10Y国债态度": "文章未涉及",
+            "10Y预测区间": "文章未涉及",
+            "5Y国债态度": "文章未涉及",
+            "5Y预测区间": "文章未涉及",
+            "整体观点": "分析失败"
         }
