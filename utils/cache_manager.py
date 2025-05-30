@@ -39,14 +39,13 @@ class CacheManager:
         return hashlib.md5(content.encode()).hexdigest()
 
     def is_article_processed(self, title: str, institution: str, date: str) -> bool:
-        """检查文章是否已处理"""
+        """检查文章是否已处理（不限于今天）"""
         article_hash = self._get_article_hash(title, institution, date)
-        today = datetime.now().date().isoformat()
 
+        # 检查是否存在于历史记录中
         if article_hash in self.article_hashes:
-            processed_date = self.article_hashes[article_hash].get('processed_date')
-            if processed_date == today:
-                return True
+            return True
+
         return False
 
     def mark_article_processed(self, title: str, institution: str, date: str):
