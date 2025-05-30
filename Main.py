@@ -1,5 +1,6 @@
 """主程序入口 - 简化版"""
 import sys
+import os
 from datetime import datetime
 from config.setting import setup_environment
 from crawler.crawler_manager import CrawlerManager
@@ -88,7 +89,22 @@ class BondMarketAnalysisSystem:
         articles = self.crawler_manager.crawl_articles()
         if not articles:
             self.logger.warning("没有新文章需要分析")
+
+            # 询问是否分析历史文章
+            print("\n没有发现新文章。")
+            print("是否要分析今天已爬取的历史文章？")
+            choice = input("请选择 (y/n): ")
+
+            if choice.lower() == 'y':
+                # 获取今天的缓存文章
+                articles = self._get_today_cached_articles()
+                if not articles:
+                    self.logger.info("今天没有缓存的文章")
+                    return
+            else:
+                self.logger.info("退出爬取模式")
             return
+        return
 
         # 分析文章
         analyses = self.analysis_manager.analyze_articles(articles)
@@ -96,6 +112,74 @@ class BondMarketAnalysisSystem:
         # 生成报告
         if analyses:
             self.report_manager.generate_reports(analyses)
+
+    def _get_today_cached_articles(self) -> list:
+        """获取今天缓存的文章"""
+        today_folder = datetime.now().strftime('%Y%m%d')
+        cache_path = os.path.join('data', 'cache', today_folder)
+
+        if not os.path.exists(cache_path):
+            return []
+
+        articles = []
+
+        # 遍历所有类型文件夹
+        for type_folder in ['固收类', '权益类', '宏观类', '其他']:
+            type_path = os.path.join(cache_path, type_folder)
+            if not os.path.exists(type_path):
+                continue
+
+            for file_name in os.listdir(type_path):
+                if file_name.endswith('.txt'):
+                    file_path = os.path.join(type_path, file_name)
+
+                    # 解析文件内容获取文章信息
+                    article_info = self._parse_cached_article(file_path)
+                    if article_info:
+                        articles.append(article_info)
+
+        self.logger.info(f"找到 {len(articles)} 篇今日缓存文章")
+        return articles
+
+    def _parse_cached_article(self, file_path: str) -> dict:
+        """解析缓存的文章文件"""
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # 解析文章信息
+            article_info = {}
+            lines = content.split('\n')
+
+            for line in lines[:10]:  # 只解析前10行的元数据
+                if line.startswith('标题:'):
+                    article_info['title'] = line.replace('标题:', '').strip()
+                elif line.startswith('机构:'):
+                    article_info['institution'] = line.replace('机构:', '').strip()
+                elif line.startswith('日期:'):
+                    article_info['date'] = line.replace('日期:', '').strip()
+                elif line.startswith('链接:'):
+                    article_info['link'] = line.replace('链接:', '').strip()
+                elif line.startswith('阅读数:'):
+                    article_info['read_num'] = int(line.replace('阅读数:', '').strip() or '0')
+                elif line.startswith('-' * 80):
+                    break
+
+            # 获取正文内容
+            content_start = content.find('-' * 80)
+            if content_start > 0:
+                article_info['content'] = content[content_start + 81:].strip()
+
+            # 从文件名推断文章类型
+            file_name = os.path.basename(file_path)
+            parent_folder = os.path.basename(os.path.dirname(file_path))
+            article_info['article_type'] = parent_folder
+
+            return article_info
+
+        except Exception as e:
+            self.logger.error(f"解析缓存文章失败: {e}")
+            return None
 
     def _run_excel_mode(self):
         """运行Excel链接模式"""
