@@ -15,6 +15,7 @@ from .wechat_crawler import WechatCrawler
 from utils.file_handler import FileHandler
 from utils.article_classifier import ArticleClassifier
 
+
 class WechatBatchCrawler(WechatCrawler):
     """批量爬取多个微信公众号"""
 
@@ -26,10 +27,7 @@ class WechatBatchCrawler(WechatCrawler):
         # 使用统一的分类器
         self.article_classifier = ArticleClassifier()
 
-    def is_relevant_article(self, title: str, digest: str, content_type: str) -> bool:
-        """判断文章是否相关"""
-        # 使用统一的分类器
-        return self.article_classifier.is_relevant_article(title, digest, content_type)
+    # 删除第一个重复的 is_relevant_article 方法
 
     def load_accounts(self, excel_file: str = "主要公众号来源.xlsx"):
         """加载公众号列表"""
@@ -206,44 +204,7 @@ class WechatBatchCrawler(WechatCrawler):
 
         return articles
 
-    def is_relevant_article(self, title: str, digest: str, content_type: str) -> bool:
-        """判断文章是否相关"""
-        # 关键词列表
-        macro_keywords = [
-            '宏观', '经济', 'GDP', 'CPI', 'PPI', '通胀', '就业', '货币政策',
-            '财政政策', '央行', '美联储', 'PMI', '工业', '消费', '投资', '进出口',
-            '社融', 'M2', '信贷', '社零', '固投', '房地产', '股市', '汇率', '国际经济'
-        ]
-
-        fixed_income_keywords = [
-            '策略','固收','债市','债券', '利率', '收益率', '国债', '信用债', '城投', '企业债',
-            '可转债', '资金面', 'MLF', 'LPR', '逆回购', '流动性', '久期',
-            '信用利差', '期限利差', '债市', '固收', '固定收益', '票息',
-            '配置', '交易', '杠杆', '回购', '国开', '农发', '口行'
-        ]
-
-        # 排除词
-        exclude_keywords = ['招聘', '培训', '广告', '活动', '会议', '年会', '福利']
-
-        text = (title + digest).lower()
-
-        # 检查排除词
-        for keyword in exclude_keywords:
-            if keyword in text:
-                return False
-
-        # 根据内容分类选择关键词
-        if content_type == '宏观':
-            keywords = macro_keywords
-        elif content_type == '固收':
-            keywords = fixed_income_keywords
-        else:
-            keywords = macro_keywords + fixed_income_keywords
-
-        # 检查关键词
-        match_count = sum(1 for keyword in keywords if keyword.lower() in text)
-
-        return match_count >= 2  # 至少匹配2个关键词
+    # 删除重复的 is_relevant_article 方法，直接使用 article_classifier 的方法
 
     def fetch_and_save_article(self, article_info: Dict, account_info: Dict) -> bool:
         """获取并保存文章内容"""
@@ -255,7 +216,17 @@ class WechatBatchCrawler(WechatCrawler):
                 self.logger.warning(f"文章内容过短或为空: {article_info['title']}")
                 return False
 
-            # 使用统一的缓存管理器保存（而不是直接创建目录）
+            # 构建完整内容（包含元数据）
+            full_content = f"""标题: {article_info['title']}
+机构: {account_info['撰写机构']}
+日期: {article_info['create_time']}
+链接: {article_info['link']}
+阅读数: {article_info.get('read_num', 0)}
+{'-' * 80}
+
+{content}"""
+
+            # 使用统一的缓存管理器保存
             from utils.cache_manager import CacheManager
             from utils.data_processor import DataProcessor
 
@@ -273,15 +244,17 @@ class WechatBatchCrawler(WechatCrawler):
                 content_type=account_info['内容分类']
             )
 
-            # 保存到缓存
-            cache_manager.save_article_cache(
-                url=article_info['link'],
-                institution=account_info['撰写机构'],
-                date=parsed_date,
-                title=article_info['title'],
-                article_type=article_type,
-                content=content
+            # 获取缓存路径
+            cache_path = cache_manager.file_handler.get_cache_path(
+                article_info['link'],
+                account_info['撰写机构'],
+                parsed_date,
+                article_info['title'],
+                article_type
             )
+
+            # 保存完整内容
+            cache_manager.file_handler.save_cache(full_content, cache_path)
 
             self.logger.info(f"文章已保存: {article_info['title']}")
             return True
@@ -300,7 +273,7 @@ class WechatBatchCrawler(WechatCrawler):
                 self.logger.warning(f"文章内容过短或为空: {article_info['title']}")
                 return ""
 
-            # 保存文章（复用原方法）
+            # 保存文章
             self.fetch_and_save_article(article_info, account_info)
 
             return content
@@ -308,19 +281,6 @@ class WechatBatchCrawler(WechatCrawler):
         except Exception as e:
             self.logger.error(f"获取文章内容失败: {e}")
             return ""
-
-    def _sanitize_filename(self, filename: str) -> str:
-        """清理文件名"""
-        # 移除非法字符
-        illegal_chars = '<>:"/\\|?*'
-        for char in illegal_chars:
-            filename = filename.replace(char, '_')
-
-        # 限制长度
-        if len(filename) > 50:
-            filename = filename[:50]
-
-        return filename.strip()
 
     def crawl_all_accounts(self, days: int = 7):
         """爬取所有公众号的最新文章（原方法）"""
@@ -346,38 +306,16 @@ class WechatBatchCrawler(WechatCrawler):
 
             try:
                 # 获取或搜索fakeid
-                if not account_info['fakeid']:
-                    fakeid = self.search_account(account_name)
-                    if fakeid:
-                        account_info['fakeid'] = fakeid
-                        self.accounts_info[account_name]['fakeid'] = fakeid
-                        self._save_fakeids()
-                    else:
-                        self.logger.warning(f"未找到公众号: {account_name}")
-                        continue
-                else:
-                    fakeid = account_info['fakeid']
+                fakeid = self._get_or_search_fakeid(account_name, account_info)
+                if not fakeid:
+                    continue
 
                 # 获取文章
                 articles = self.get_recent_articles(fakeid, account_name, days)
                 self.logger.info(f"获取到 {len(articles)} 篇文章")
 
-                # 筛选相关文章
-                relevant_articles = []
-                for article in articles:
-                    if self.is_relevant_article(
-                        article['title'],
-                        article['digest'],
-                        account_info['内容分类']
-                    ):
-                        relevant_articles.append(article)
-
-                self.logger.info(f"筛选出 {len(relevant_articles)} 篇相关文章")
-
-                # 保存文章
-                for article in relevant_articles:
-                    if self.fetch_and_save_article(article, account_info):
-                        article_count += 1
+                # 筛选相关文章并保存
+                article_count += self._filter_and_save_articles(articles, account_info)
 
                 success_count += 1
                 time.sleep(3)
@@ -414,50 +352,17 @@ class WechatBatchCrawler(WechatCrawler):
 
             try:
                 # 获取或搜索fakeid
-                if not account_info['fakeid']:
-                    fakeid = self.search_account(account_name)
-                    if fakeid:
-                        account_info['fakeid'] = fakeid
-                        self.accounts_info[account_name]['fakeid'] = fakeid
-                        self._save_fakeids()
-                    else:
-                        self.logger.warning(f"未找到公众号: {account_name}")
-                        continue
-                else:
-                    fakeid = account_info['fakeid']
+                fakeid = self._get_or_search_fakeid(account_name, account_info)
+                if not fakeid:
+                    continue
 
                 # 获取文章列表
                 articles = self.get_recent_articles(fakeid, account_name, days)
                 self.logger.info(f"获取到 {len(articles)} 篇文章")
 
-                # 筛选相关文章
-                relevant_articles = []
-                for article in articles:
-                    if self.is_relevant_article(
-                        article['title'],
-                        article['digest'],
-                        account_info['内容分类']
-                    ):
-                        relevant_articles.append(article)
-
-                self.logger.info(f"筛选出 {len(relevant_articles)} 篇相关文章")
-
-                # 保存文章并收集信息
-                for article in relevant_articles:
-                    # 获取并保存内容
-                    content = self._fetch_and_save_article_with_return(article, account_info)
-                    if content:
-                        # 添加到返回列表
-                        all_articles.append({
-                            'link': article['link'],
-                            'institution': account_info['撰写机构'],
-                            'date': article['create_time'],
-                            'title': article['title'],
-                            'content': content,
-                            'read_num': article.get('read_num', 0),
-                            'category': account_info['机构分类'],
-                            'content_type': account_info['内容分类']
-                        })
+                # 筛选并处理文章
+                processed_articles = self._filter_and_process_articles(articles, account_info)
+                all_articles.extend(processed_articles)
 
                 success_count += 1
                 time.sleep(3)
@@ -471,3 +376,66 @@ class WechatBatchCrawler(WechatCrawler):
         self.logger.info(f"- 获取文章总数: {len(all_articles)}")
 
         return all_articles
+
+    # 新增辅助方法，减少重复代码
+    def _get_or_search_fakeid(self, account_name: str, account_info: Dict) -> str:
+        """获取或搜索fakeid"""
+        if not account_info['fakeid']:
+            fakeid = self.search_account(account_name)
+            if fakeid:
+                account_info['fakeid'] = fakeid
+                self.accounts_info[account_name]['fakeid'] = fakeid
+                self._save_fakeids()
+            else:
+                self.logger.warning(f"未找到公众号: {account_name}")
+                return ""
+        else:
+            fakeid = account_info['fakeid']
+
+        return fakeid
+
+    def _filter_and_save_articles(self, articles: List[Dict], account_info: Dict) -> int:
+        """筛选相关文章并保存，返回保存的文章数"""
+        saved_count = 0
+
+        for article in articles:
+            # 使用统一的分类器判断文章是否相关
+            if self.article_classifier.is_relevant_article(
+                article['title'],
+                article['digest'],
+                account_info['内容分类']
+            ):
+                if self.fetch_and_save_article(article, account_info):
+                    saved_count += 1
+
+        self.logger.info(f"筛选并保存了 {saved_count} 篇相关文章")
+        return saved_count
+
+    def _filter_and_process_articles(self, articles: List[Dict], account_info: Dict) -> List[Dict]:
+        """筛选并处理文章，返回处理后的文章列表"""
+        processed_articles = []
+
+        for article in articles:
+            # 使用统一的分类器判断文章是否相关
+            if self.article_classifier.is_relevant_article(
+                article['title'],
+                article['digest'],
+                account_info['内容分类']
+            ):
+                # 获取并保存内容
+                content = self._fetch_and_save_article_with_return(article, account_info)
+                if content:
+                    # 添加到返回列表
+                    processed_articles.append({
+                        'link': article['link'],
+                        'institution': account_info['撰写机构'],
+                        'date': article['create_time'],
+                        'title': article['title'],
+                        'content': content,
+                        'read_num': article.get('read_num', 0),
+                        'category': account_info['机构分类'],
+                        'content_type': account_info['内容分类']
+                    })
+
+        self.logger.info(f"筛选出 {len(processed_articles)} 篇相关文章")
+        return processed_articles
