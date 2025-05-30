@@ -2,7 +2,7 @@
 import json
 from typing import List, Dict, Any
 from api.deepseek_client import DeepSeekClient
-from analyzer.prompt import YIELD_FORECAST_PROMPT, SUMMARY_REPORT_PROMPT
+from analyzer.prompt import SUMMARY_REPORT_PROMPT
 from config.setting import ANALYSIS_DIMENSIONS
 
 
@@ -69,53 +69,6 @@ class MarketAnalyzer:
                 article_types[type_name] = article_types.get(type_name, 0) + 1
 
         return article_types
-
-    def _generate_yield_forecast(self, analyses: List[Dict[str, Any]]) -> str:
-        """生成收益率预测"""
-        # 分离有效预测
-        explicit_10y = []
-        directional_10y = []
-        explicit_5y = []
-        directional_5y = []
-
-        for analysis in analyses:
-            # 处理10Y预测
-            forecast_10y = analysis.get('10Y国债收益率预测', {})
-            if isinstance(forecast_10y, dict):
-                if forecast_10y.get('区间') and forecast_10y.get('区间') != '文章未涉及':
-                    explicit_10y.append({
-                        '机构': analysis.get('机构'),
-                        '预测': forecast_10y
-                    })
-                elif forecast_10y.get('方向') and forecast_10y.get('方向') != '文章未涉及':
-                    directional_10y.append({
-                        '机构': analysis.get('机构'),
-                        '方向': forecast_10y.get('方向')
-                    })
-
-            # 处理5Y预测
-            forecast_5y = analysis.get('5Y国债收益率预测', {})
-            if isinstance(forecast_5y, dict):
-                if forecast_5y.get('区间') and forecast_5y.get('区间') != '文章未涉及':
-                    explicit_5y.append({
-                        '机构': analysis.get('机构'),
-                        '预测': forecast_5y
-                    })
-                elif forecast_5y.get('方向') and forecast_5y.get('方向') != '文章未涉及':
-                    directional_5y.append({
-                        '机构': analysis.get('机构'),
-                        '方向': forecast_5y.get('方向')
-                    })
-
-        # 构建预测提示词
-        prompt = YIELD_FORECAST_PROMPT.format(
-            explicit_10y=json.dumps(explicit_10y[:5], ensure_ascii=False),
-            directional_10y=json.dumps(directional_10y[:5], ensure_ascii=False),
-            explicit_5y=json.dumps(explicit_5y[:5], ensure_ascii=False),
-            directional_5y=json.dumps(directional_5y[:5], ensure_ascii=False)
-        )
-
-        return self.client.chat(prompt)
 
     def _clean_format(self, text: str) -> str:
         """清理文本格式"""
