@@ -255,40 +255,35 @@ class WechatBatchCrawler(WechatCrawler):
                 self.logger.warning(f"文章内容过短或为空: {article_info['title']}")
                 return False
 
-            # 构建保存路径
-            institution = account_info['撰写机构']
-            category = account_info['机构分类']
-            content_type = account_info['内容分类']
+            # 使用统一的缓存管理器保存（而不是直接创建目录）
+            from utils.cache_manager import CacheManager
+            from utils.data_processor import DataProcessor
 
-            # 创建分类目录
-            category_dir = os.path.join(CACHE_DIR, category, content_type)
-            os.makedirs(category_dir, exist_ok=True)
+            cache_manager = CacheManager()
+            data_processor = DataProcessor()
 
-            # 构建文件名
-            safe_title = self._sanitize_filename(article_info['title'])
-            safe_institution = self._sanitize_filename(institution)
-            date_str = article_info['create_time']
+            # 获取标准化日期
+            parsed_date = data_processor.parse_date(article_info['create_time'])
 
-            filename = f"{safe_institution}_{safe_title}_{date_str}.txt"
-            filepath = os.path.join(category_dir, filename)
+            # 使用分类器确定文章类型
+            article_type = self.article_classifier.classify(
+                title=article_info['title'],
+                institution=account_info['撰写机构'],
+                content=content[:500],
+                content_type=account_info['内容分类']
+            )
 
-            # 保存内容
-            full_content = f"""标题: {article_info['title']}
-机构: {institution}
-公众号: {article_info['account_name']}
-日期: {date_str}
-链接: {article_info['link']}
-分类: {category} - {content_type}
-阅读数: {article_info.get('read_num', 0)}
-点赞数: {article_info.get('like_num', 0)}
-{"-" * 80}
+            # 保存到缓存
+            cache_manager.save_article_cache(
+                url=article_info['link'],
+                institution=account_info['撰写机构'],
+                date=parsed_date,
+                title=article_info['title'],
+                article_type=article_type,
+                content=content
+            )
 
-{content}"""
-
-            with open(filepath, 'w', encoding='utf-8') as f:
-                f.write(full_content)
-
-            self.logger.info(f"文章已保存: {filename}")
+            self.logger.info(f"文章已保存: {article_info['title']}")
             return True
 
         except Exception as e:
