@@ -60,16 +60,29 @@ class AnalysisManager:
     def _create_temp_excel(self, articles: List[Dict]) -> str:
         """创建临时Excel文件"""
         excel_data = []
-        for article in articles:
+
+        for i, article in enumerate(articles):
+            # 确保link字段存在且不为空
+            link = article.get('link', '')
+            if not link or link == '':
+                # 如果没有链接，生成一个虚拟链接用于分析
+                link = f"cached://article_{i}_{article.get('title', 'unknown')[:20]}"
+                self.logger.warning(f"文章缺少链接，使用虚拟链接: {link}")
+
             excel_data.append({
-                '链接': article['link'],
-                '撰写机构': article['institution'],
-                '发布日期': article['date'],
+                '链接': link,
+                '撰写机构': article.get('institution', '未知'),
+                '发布日期': article.get('date', datetime.now().strftime('%Y-%m-%d')),
                 '文章内容': article.get('content', ''),
                 '阅读数': article.get('read_num', 0),
                 '文章类型': article.get('article_type', '未分类'),
-                '文章标题': article.get('title', '')
+                '文章标题': article.get('title', '未知标题')
             })
+
+        # 确保至少有一条数据
+        if not excel_data:
+            self.logger.error("没有有效的文章数据")
+            raise ValueError("没有可分析的文章")
 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         temp_filename = f'crawled_articles_{timestamp}.xlsx'
@@ -78,6 +91,12 @@ class AnalysisManager:
         os.makedirs(os.path.dirname(temp_path), exist_ok=True)
 
         df = pd.DataFrame(excel_data)
+
+        # 调试：打印DataFrame信息
+        self.logger.debug(f"DataFrame columns: {df.columns.tolist()}")
+        self.logger.debug(f"DataFrame shape: {df.shape}")
+        self.logger.debug(f"First row link: {df.iloc[0]['链接'] if len(df) > 0 else 'No data'}")
+
         df.to_excel(temp_path, index=False)
 
         self.logger.info(f"创建临时分析文件: {temp_filename}")
@@ -85,14 +104,13 @@ class AnalysisManager:
         return temp_filename
 
     def _run_analysis(self, excel_file: str, include_read_count: bool = False) -> List[Dict]:
-        """运行分析流程"""
+        """运行分析流程 - 简化版"""
         # 读取Excel数据
         try:
             links, institutions, dates, pre_contents = self.file_handler.read_excel_links(excel_file)
 
-            # 读取额外信息
-            read_counts, titles = self._read_extra_info(excel_file) if include_read_count else (
-            [0] * len(links), [''] * len(links))
+            # 读取标题（不再需要阅读数）
+            titles = self._read_titles(excel_file)
 
         except Exception as e:
             self.logger.error(f"读取文件失败: {e}")
@@ -109,8 +127,8 @@ class AnalysisManager:
         successful_count = 0
         failed_count = 0
 
-        for i, (link, inst, date_str, pre_content, read_count, title) in enumerate(
-                zip(links, institutions, dates, pre_contents, read_counts, titles), 1
+        for i, (link, inst, date_str, pre_content, title) in enumerate(
+                zip(links, institutions, dates, pre_contents, titles), 1
         ):
             self.logger.info(f"\n{'=' * 60}")
             self.logger.info(f"[{i}/{len(links)}] 开始分析")
@@ -120,8 +138,6 @@ class AnalysisManager:
 
             if title:
                 self.logger.info(f"标题: {title}")
-            if read_count > 0:
-                self.logger.info(f"阅读量: {read_count}")
 
             try:
                 # 获取内容
@@ -135,21 +151,14 @@ class AnalysisManager:
                 # 清理内容
                 content = self.data_processor.clean_text(content)
 
-                # 分析文章
+                # 分析文章（不再需要评分）
                 analysis = self.article_analyzer.analyze(content, link, inst, str(date_str))
 
-                # AI增强评分
-                self.logger.info("使用AI进行增强评分...")
-                enhanced_score = self.data_processor.calculate_article_score_with_ai(
-                    analysis, read_count
-                )
-                analysis.update(enhanced_score)
-
                 # 验证分析结果
-                if self.data_processor.validate_analysis_result(analysis):
+                if self._validate_analysis(analysis):
                     all_analyses.append(analysis)
                     successful_count += 1
-                    self.logger.info(f"分析完成 - 评分: {analysis.get('重要性评分')}")
+                    self.logger.info(f"分析完成 - 态度: {analysis.get('10Y国债态度')}")
                 else:
                     self.logger.warning("分析结果验证失败")
                     failed_count += 1
@@ -172,6 +181,30 @@ class AnalysisManager:
         self.logger.info(f"{'=' * 60}")
 
         return all_analyses
+
+    def _validate_analysis(self, analysis: Dict) -> bool:
+        """验证分析结果 - 简化版"""
+        required_fields = [
+            '机构', '日期', 'url',
+            '基本面及通胀', '资金面',
+            '货币及财政政策', '机构行为',
+            '海外及其他', '整体观点',
+            '10Y国债态度', '5Y国债态度'
+        ]
+
+        for field in required_fields:
+            if field not in analysis:
+                return False
+
+        return True
+
+    def _read_titles(self, excel_file: str) -> List[str]:
+        """读取文章标题"""
+        try:
+            df = pd.read_excel(os.path.join('data', 'input', excel_file))
+            return df['文章标题'].fillna('').tolist() if '文章标题' in df.columns else [''] * len(df)
+        except:
+            return []
 
     def _read_extra_info(self, excel_file: str) -> tuple:
         """读取额外信息（阅读数、标题）"""
