@@ -10,7 +10,7 @@ class ArticleClassifier:
         # 定义各类别的关键词和权重
         self.keywords = {
             '固收类': {
-                '强特征': ['债','债券', '利率债', '信用债', '固定收益', '债市', '收益率曲线',
+                '强特征': ['债','债券', '利率债', '信用债','信用','固收', '固定收益', '债市', '收益率曲线',
                            '久期', '凸性', '国债', '地方债', '企业债', '可转债', '城投债',
                            '金融债', '公司债', '短融', '中票', '永续债', '转债','可转债'],
                 '一般特征': ['利率', '收益率', 'MLF', 'LPR', '央行', '流动性', '资金面',
@@ -105,9 +105,14 @@ class ArticleClassifier:
 
     def is_relevant_article(self, title: str, digest: str, content_type: str) -> bool:
         """判断文章是否相关（用于爬虫筛选）"""
-        # 排除词
-        exclude_keywords = ['招聘', '培训', '广告', '活动', '会议', '年会', '福利',
-                            '招标', '中标', '公告', '声明', '澄清']
+        # 更新排除词列表
+        exclude_keywords = [
+            '招聘', '培训', '广告', '活动', '会议', '年会', '福利',
+            '招标', '中标', '公告', '声明', '澄清', '通知', '征稿',
+            '直播', '报名', '课程', '讲座', '论坛', '峰会', '大会',
+            '获奖', '评选', '投票', '问卷', '调研活动', '有奖',
+            '红包', '抽奖', '赠送', '优惠', '折扣', '促销'
+        ]
 
         text = (title + digest).lower()
 
@@ -122,6 +127,7 @@ class ArticleClassifier:
         # 只要不是"其他"类型，就认为是相关的
         return article_type != '其他'
 
+    # utils/article_classifier.py
     def classify_batch(self, articles: List[Dict]) -> Dict[str, List[Dict]]:
         """批量分类文章"""
         classified = {
@@ -132,12 +138,21 @@ class ArticleClassifier:
         }
 
         for article in articles:
-            article_type = self.classify(
-                title=article.get('title', ''),
-                institution=article.get('institution', ''),
-                content=article.get('content', '')[:500] if article.get('content') else '',
-                content_type=article.get('content_type', '')
-            )
+            # 优先使用已有的分类（例如从缓存文件夹读取的）
+            existing_type = article.get('article_type', '')
+
+            if existing_type in classified:
+                # 如果已有分类且有效，直接使用
+                article_type = existing_type
+            else:
+                # 否则重新分类
+                article_type = self.classify(
+                    title=article.get('title', ''),
+                    institution=article.get('institution', ''),
+                    content=article.get('content', '')[:500] if article.get('content') else '',
+                    content_type=article.get('content_type', '')
+                )
+
             article['article_type'] = article_type
             classified[article_type].append(article)
 
