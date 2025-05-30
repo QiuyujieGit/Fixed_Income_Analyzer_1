@@ -22,109 +22,9 @@ from report.text_generator import TextGenerator
 from utils.file_handler import FileHandler
 from utils.logger import setup_logger
 from utils.data_processor import DataProcessor
+from utils.article_classifier import ArticleClassifier  # 使用统一的分类器
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-
-class ArticleClassifier:
-    """文章分类器"""
-    
-    def __init__(self):
-        # 定义各类别的关键词和权重
-        self.keywords = {
-            '固收类': {
-                '强特征': ['债券', '利率债', '信用债', '固定收益', '债市', '收益率曲线', 
-                          '久期', '凸性', '国债', '地方债', '企业债', '可转债', '城投债',
-                          '金融债', '公司债', '短融', '中票', '永续债'],
-                '一般特征': ['利率', '收益率', 'MLF', 'LPR', '央行', '流动性', '资金面',
-                            '货币政策', '公开市场', '逆回购', '信用利差', '期限利差',
-                            'DR007', 'R007', '资金价格', '债券配置'],
-                '权重': 1.5
-            },
-            '权益类': {
-                '强特征': ['股票', '股市', 'A股', '港股', '美股', '个股', '板块',
-                          '涨停', '跌停', '龙头股', '题材股', '概念股', '创业板',
-                          '科创板', '主板', '北交所'],
-                '一般特征': ['指数', '涨跌', '成交量', '换手率', '市盈率', '估值',
-                            '主力', '游资', '北向资金', '融资融券', '股价', '涨幅',
-                            '跌幅', '技术分析', 'K线'],
-                '权重': 1.5
-            },
-            '宏观类': {
-                '强特征': ['宏观经济', 'GDP', '经济增长', '通货膨胀', '失业率',
-                          '贸易战', '经济周期', '产业政策', '经济数据', '经济指标'],
-                '一般特征': ['CPI', 'PPI', 'PMI', '工业增加值', '社融', '货币供应',
-                            '进出口', '消费', '投资', '财政政策', 'M1', 'M2',
-                            '社会消费品零售', '固定资产投资'],
-                '权重': 1.0
-            }
-        }
-        
-        # 机构类型映射
-        self.institution_types = {
-            '固收类': ['固收', '债券', '利率', '信用', '固定收益'],
-            '权益类': ['股票', '权益', '策略', '量化', '股市'],
-            '综合类': ['证券', '研究', '宏观', '策略', '金融']
-        }
-    
-    def classify(self, title: str, institution: str = "", content: str = "") -> str:
-        """分类文章"""
-        # 合并所有文本进行分析
-        full_text = f"{title} {institution} {content}".lower()
-        
-        # 如果文本太短，返回其他
-        if len(full_text) < 20:
-            return '其他'
-        
-        # 计算各类别得分
-        scores = {}
-        
-        for category, keywords_dict in self.keywords.items():
-            score = 0
-            
-            # 强特征匹配
-            for keyword in keywords_dict['强特征']:
-                if keyword.lower() in full_text:
-                    score += 2 * keywords_dict['权重']
-            
-            # 一般特征匹配
-            for keyword in keywords_dict['一般特征']:
-                if keyword.lower() in full_text:
-                    score += 1 * keywords_dict['权重']
-            
-            # 机构名称加权
-            for inst_keyword in self.institution_types.get(category.replace('类', '类'), []):
-                if inst_keyword.lower() in institution.lower():
-                    score += 1.5
-            
-            scores[category] = score
-        
-        # 如果没有明显特征，返回其他
-        if max(scores.values()) < 2:
-            return '其他'
-        
-        # 返回得分最高的类别
-        return max(scores, key=scores.get)
-    
-    def classify_batch(self, articles: List[Dict]) -> Dict[str, List[Dict]]:
-        """批量分类文章"""
-        classified = {
-            '固收类': [],
-            '权益类': [],
-            '宏观类': [],
-            '其他': []
-        }
-        
-        for article in articles:
-            article_type = self.classify(
-                title=article.get('title', ''),
-                institution=article.get('institution', ''),
-                content=article.get('content', '')[:500] if article.get('content') else ''
-            )
-            article['article_type'] = article_type
-            classified[article_type].append(article)
-        
-        return classified
 
 
 class BondMarketAnalysisSystem:
@@ -166,11 +66,11 @@ class BondMarketAnalysisSystem:
             self.hash_cache_file = os.path.join('data', 'cache', 'article_hashes.json')
             self.article_hashes = self._load_article_hashes()
             self.logger.info("✓ 去重系统初始化成功")
-            
-            # 初始化文章分类器
+
+            # 使用统一的文章分类器
             self.article_classifier = ArticleClassifier()
             self.logger.info("✓ 文章分类器初始化成功")
-            
+
             # 清理旧缓存（保留7天）
             self.file_handler.clean_old_cache(days_to_keep=7)
             self.logger.info("✓ 已清理旧缓存文件")
@@ -315,7 +215,7 @@ class BondMarketAnalysisSystem:
 
         # 显示缓存统计
         self._show_cache_statistics()
-        
+
         # 分析文章（增加筛选功能）
         self._analyze_crawled_articles(articles)
 
@@ -368,33 +268,33 @@ class BondMarketAnalysisSystem:
 
         # 首先对文章进行分类
         classified_articles = self._classify_articles(articles)
-        
+
         # 显示分类统计
         self._show_classification_stats(classified_articles)
-        
+
         # 让用户选择分析模式
         analysis_mode = self._select_analysis_mode()
-        
+
         # 根据选择筛选文章
         if analysis_mode == 'bond_only':
             filtered_articles = classified_articles.get('固收类', [])
             self.logger.info(f"仅分析固收类文章：{len(filtered_articles)}篇")
         elif analysis_mode == 'bond_macro':
-            filtered_articles = (classified_articles.get('固收类', []) + 
+            filtered_articles = (classified_articles.get('固收类', []) +
                                classified_articles.get('宏观类', []))
             self.logger.info(f"分析固收和宏观类文章：{len(filtered_articles)}篇")
         else:  # all
             filtered_articles = articles
             self.logger.info(f"分析所有文章：{len(filtered_articles)}篇")
-        
+
         if not filtered_articles:
             self.logger.warning("没有符合条件的文章需要分析")
             return
-        
+
         # 预估分析时间
         estimated_time = len(filtered_articles) * 60  # 假设每篇文章需要60秒
         self.logger.info(f"预计分析时间：约{estimated_time // 60}分钟")
-        
+
         # 继续原有的分析流程
         try:
             # 准备Excel数据
@@ -435,40 +335,23 @@ class BondMarketAnalysisSystem:
             self.logger.error(f"分析文章失败: {e}")
 
     def _classify_articles(self, articles: list) -> dict:
-        """对文章进行分类"""
-        classified = {
-            '固收类': [],
-            '权益类': [],
-            '宏观类': [],
-            '其他': []
-        }
-        
-        for article in articles:
-            # 使用文章分类器
-            article_type = self.article_classifier.classify(
-                title=article.get('title', ''),
-                institution=article.get('institution', ''),
-                content=article.get('content', '')[:500] if article.get('content') else ''
-            )
-            
-            article['article_type'] = article_type
-            classified[article_type].append(article)
-        
-        return classified
-    
+        """对文章进行分类 - 使用统一的分类器"""
+        # 使用文章分类器的批量分类方法
+        return self.article_classifier.classify_batch(articles)
+
     def _show_classification_stats(self, classified_articles: dict):
         """显示分类统计"""
         print("\n" + "=" * 60)
         print("文章分类统计")
         print("=" * 60)
-        
+
         total = sum(len(articles) for articles in classified_articles.values())
-        
+
         for category, articles in classified_articles.items():
             count = len(articles)
             percentage = (count / total * 100) if total > 0 else 0
             print(f"{category}: {count}篇 ({percentage:.1f}%)")
-            
+
             # 显示部分文章标题
             if articles and count > 0:
                 print(f"  示例文章:")
@@ -479,9 +362,9 @@ class BondMarketAnalysisSystem:
                     print(f"    {i+1}. {title}")
                 if count > 3:
                     print(f"    ... 还有{count-3}篇")
-        
+
         print("=" * 60)
-    
+
     def _select_analysis_mode(self) -> str:
         """选择分析模式"""
         print("\n请选择分析模式:")
@@ -489,7 +372,7 @@ class BondMarketAnalysisSystem:
         print("2. 分析固收和宏观类文章")
         print("3. 分析所有文章")
         print("-" * 40)
-        
+
         while True:
             choice = input("请选择 (1/2/3，默认1): ").strip() or "1"
             if choice == '1':
@@ -500,12 +383,12 @@ class BondMarketAnalysisSystem:
                 return 'all'
             else:
                 print("无效选择，请重新输入")
-    
+
     def _show_cache_statistics(self):
         """显示缓存统计信息"""
         today_folder = datetime.now().strftime('%Y%m%d')
         stats = self.file_handler.get_cache_statistics(today_folder)
-        
+
         print("\n" + "=" * 60)
         print(f"今日缓存统计 ({today_folder})")
         print("=" * 60)
@@ -546,7 +429,7 @@ class BondMarketAnalysisSystem:
                         read_counts = df['阅读数'].fillna(0).astype(int).tolist()
                     else:
                         read_counts = [0] * len(links)
-                    
+
                     if '文章标题' in df.columns:
                         titles = df['文章标题'].fillna('').tolist()
                     else:
@@ -653,11 +536,11 @@ class BondMarketAnalysisSystem:
         # 先检查今天的缓存
         today_folder = datetime.now().strftime('%Y%m%d')
         cached_content = self.file_handler.check_cache(url, today_folder)
-        
+
         if cached_content:
             self.logger.info("使用缓存内容")
             return cached_content
-        
+
         # 如果今天没有，检查所有缓存
         cached_content = self.file_handler.check_cache(url)
         if cached_content:
@@ -675,28 +558,29 @@ class BondMarketAnalysisSystem:
             else:
                 self.logger.info("使用Jina爬虫获取内容")
                 content, fetched_title = self.jina_crawler.fetch_content(url)
-            
+
             # 如果没有传入标题，使用爬取到的标题
             if not title and fetched_title:
                 title = fetched_title
 
-            # 保存缓存（会自动分类）
+            # 保存缓存（修复缩进问题）
             if content and len(content) > 100:
                 parsed_date = self.data_processor.parse_date(date)
-                # 先判断文章类型
+                # 使用统一的分类器进行分类
                 article_type = self.article_classifier.classify(title, institution, content[:500])
                 cache_path = self.file_handler.get_cache_path(
                     url, institution, parsed_date, title, article_type
                 )
                 self.file_handler.save_cache(content, cache_path)
                 self.logger.info(f"内容已缓存到: {article_type}/{os.path.basename(cache_path)}")
+                
         except Exception as e:
             self.logger.error(f"获取内容失败: {e}")
 
         return content
 
-    # ... [其余方法保持不变，包括 _generate_enhanced_reports 等] ...
-    
+    # ... [其余方法保持不变：_generate_enhanced_reports 等] ...
+
     def _generate_enhanced_reports(self, analyses: list):
         """生成增强报告 - AI增强版"""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
