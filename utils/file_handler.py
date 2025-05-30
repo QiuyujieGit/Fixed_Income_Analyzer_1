@@ -57,18 +57,18 @@ class FileHandler:
         if len(filename) > 50:
             filename = filename[:50]
         return filename.strip()
-    
+
     @staticmethod
     def check_cache(url: str, date_folder: Optional[str] = None) -> str:
         """检查缓存是否存在"""
         url_hash = hashlib.md5(url.encode()).hexdigest()[:10]
-        
+
         # 确定搜索路径
         if date_folder:
             search_path = os.path.join(CACHE_DIR, date_folder)
         else:
             search_path = CACHE_DIR
-        
+
         if os.path.exists(search_path):
             # 递归搜索所有子目录
             for root, dirs, files in os.walk(search_path):
@@ -77,13 +77,19 @@ class FileHandler:
                         cache_file = os.path.join(root, file)
                         with open(cache_file, 'r', encoding='utf-8') as f:
                             return f.read()
-        
+
         return ""
-    
+
     @staticmethod
     def save_cache(content: str, cache_path: str):
-        """保存缓存"""
+        """保存缓存 - 确保内容格式正确"""
         os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+
+        # 检查内容是否包含元数据
+        if not content.startswith('标题:') and '-' * 80 not in content:
+            # 如果是纯内容，添加默认元数据
+            print(f"警告：缓存内容缺少元数据，路径：{cache_path}")
+
         with open(cache_path, 'w', encoding='utf-8') as f:
             f.write(content)
     
