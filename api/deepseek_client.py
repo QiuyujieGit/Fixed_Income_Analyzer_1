@@ -35,7 +35,7 @@ class DeepSeekClient:
                     ],
                     stream=False,
                     temperature=0.7,
-                    max_tokens=3000
+                    max_tokens=8000
                 )
 
                 result = response.choices[0].message.content
